@@ -1,4 +1,4 @@
-import {DrawingUtils, FilesetResolver, HandLandmarker} from "@mediapipe/tasks-vision";
+import {DrawingUtils, FilesetResolver, HandLandmarker, type NormalizedLandmark} from "@mediapipe/tasks-vision";
 
 const vision = await FilesetResolver.forVisionTasks(
     "/wasm"
@@ -19,6 +19,22 @@ function throwNull(msg: string): never {
     throw new Error(msg);
 }
 
+type Frame = NormalizedLandmark[][]
+
+interface Sign {
+    frames: Frame[]
+}
+
+const signs: Sign[] = [];
+
+function appendSignFrame(sign: Sign, frame: Frame) {
+    sign.frames.push(structuredClone(frame));
+}
+
+function flushSign(sign: Sign) {
+    signs.push(sign);
+}
+
 export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasElement) {
     console.debug("watching webcam");
     canvasEl.style.width = `${videoEl.videoWidth} px`;
@@ -31,6 +47,7 @@ export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasEleme
     let lastVideoTime = -1;
 
     const drawingUtils = new DrawingUtils(ctx);
+    let currSign: Sign | null = null;
 
     function renderLoop() {
         if (videoEl.currentTime !== lastVideoTime) {
@@ -38,8 +55,12 @@ export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasEleme
             lastVideoTime = videoEl.currentTime;
             ctx.save();
             ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-            if (detections.landmarks) {
-                console.log("landmarks", detections.landmarks);
+            if (detections.landmarks.length > 0) {
+                if (currSign === null) {
+                    console.log("starting new sign")
+                    currSign = {frames: []};
+                }
+                appendSignFrame(currSign, detections.landmarks);
                 for (const landmarks of detections.landmarks) {
                     drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
                         color: "#00FF00",
@@ -47,6 +68,11 @@ export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasEleme
                     });
                     drawingUtils.drawLandmarks(landmarks, {color: "#FF0000", lineWidth: 2});
                 }
+            } else if (currSign) {
+                console.log("no hands detected, flushing sign", currSign)
+                flushSign(currSign);
+                currSign = null;
+                console.log("flushed sign, signs:", structuredClone(signs))
             }
             ctx.restore();
         }
