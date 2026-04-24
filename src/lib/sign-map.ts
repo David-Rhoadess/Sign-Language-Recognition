@@ -11,7 +11,6 @@ Todo:
 
 
 import type {Sign, SignData} from "./hand-landmarking.ts";
-import * as fs from 'fs';
 
 /**
  * 2 ppl: recognize sign (implement DTW/find DTW lib online/ask claude)
@@ -38,6 +37,11 @@ export class SignMap {
     constructor(embeddingToWordMap?: SignMapEntry[]) {
         if (embeddingToWordMap) {
             this.#embeddingToWordMap = embeddingToWordMap;
+        } else {
+            const saved = localStorage.getItem('signDatabase');
+            if (saved) {
+                this.#embeddingToWordMap = JSON.parse(saved);
+            }
         }
     }
 
@@ -49,25 +53,41 @@ export class SignMap {
         console.log("sign:", sign);
     }
 
+    // merge entries from a JSON file, skipping words already present
+    async mergeFromFile(url: string): Promise<void> {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return;
+            const entries: SignMapEntry[] = await response.json();
+            const existingWords = new Set(this.#embeddingToWordMap.map(e => e.word));
+            for (const entry of entries) {
+                if (!existingWords.has(entry.word)) {
+                    this.#embeddingToWordMap.push(entry);
+                    existingWords.add(entry.word);
+                }
+            }
+            localStorage.setItem('signDatabase', JSON.stringify(this.#embeddingToWordMap));
+        } catch {
+            // file not found or invalid — first run, nothing to merge
+        }
+    }
+
+    getDatabase(): SignMapEntry[] {
+        return this.#embeddingToWordMap;
+    }
+
     // adds sign to database
     addSignToDatabase(sign: Sign) {
         if (sign.word === null) {
             throw new Error("Cannot add sign to database without word");
         }
     
-        // push to instance database
-        this.#embeddingToWordMap.push({embedding: {frames: sign.frames}, word: sign.word})
-        // push to persistant database
-        try {
-            // Convert array to a formatted JSON string (4-space indentation)
-            const jsonString = JSON.stringify(this.#embeddingToWordMap, null, 4);
-            
-            // Write to the file
-            fs.writeFileSync('src/MappingDatabase.json', jsonString, 'utf8');
-            console.log('Successfully updated database!');
-        } catch (err) {
-            console.error('Error updating database:', err);
-        }
+        this.#embeddingToWordMap.push({embedding: {frames: sign.frames}, word: sign.word});
+        const json = JSON.stringify(this.#embeddingToWordMap);
+        localStorage.setItem('signDatabase', json);
+        fetch('/save-database', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: json})
+            .then(() => console.log('Successfully updated database!'))
+            .catch(err => console.error('Failed to write database file:', err));
 
     }
 }

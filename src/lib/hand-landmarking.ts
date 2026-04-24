@@ -45,7 +45,7 @@ function flushSign(sign: Sign, signDbFn: SignDatabaseFunction) {
     signs.push(sign);
 }
 
-export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasElement, signDbFn: SignDatabaseFunction) {
+export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasElement, signDbFn: SignDatabaseFunction, onSignFlushed?: (sign: Sign) => void) {
     console.debug("watching webcam");
     canvasEl.style.width = `${videoEl.videoWidth} px`;
     canvasEl.style.height = `${videoEl.videoHeight} px`;
@@ -91,6 +91,7 @@ export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasEleme
                 //  ideally you should pass in the text element that holds the word's label
                 //  into watchWebcam and pass the ref through
                 flushSign(currSign, signDbFn);
+                onSignFlushed?.(signs[signs.length - 1]);
                 currSign = null;
                 console.log("flushed sign, signs:", structuredClone(signs))
             }
