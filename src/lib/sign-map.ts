@@ -1,14 +1,3 @@
-/*
-Todo:
- - Make data persistant
- - auto flush to data structure
-    - add text field in react
- - Import from youtube link (optional)
-*/
-
-
-
-
 
 import type {Sign, SignData} from "./hand-landmarking.ts";
 
@@ -34,14 +23,10 @@ interface SignMapEntry {
 export class SignMap {
     #embeddingToWordMap: SignMapEntry[] = [];
 
-    constructor(embeddingToWordMap?: SignMapEntry[]) {
-        if (embeddingToWordMap) {
-            this.#embeddingToWordMap = embeddingToWordMap;
-        } else {
-            const saved = localStorage.getItem('signDatabase');
-            if (saved) {
-                this.#embeddingToWordMap = JSON.parse(saved);
-            }
+    constructor() {
+        const stored = localStorage.getItem('signDatabase');
+        if (stored) {
+            this.#embeddingToWordMap = JSON.parse(stored);
         }
     }
 
@@ -51,25 +36,6 @@ export class SignMap {
         // TODO: assign sign.word
         sign.word = unknownSign;
         console.log("sign:", sign);
-    }
-
-    // merge entries from a JSON file, skipping words already present
-    async mergeFromFile(url: string): Promise<void> {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) return;
-            const entries: SignMapEntry[] = await response.json();
-            const existingWords = new Set(this.#embeddingToWordMap.map(e => e.word));
-            for (const entry of entries) {
-                if (!existingWords.has(entry.word)) {
-                    this.#embeddingToWordMap.push(entry);
-                    existingWords.add(entry.word);
-                }
-            }
-            localStorage.setItem('signDatabase', JSON.stringify(this.#embeddingToWordMap));
-        } catch {
-            // file not found or invalid — first run, nothing to merge
-        }
     }
 
     getDatabase(): SignMapEntry[] {
@@ -91,5 +57,3 @@ export class SignMap {
 
     }
 }
-
-export type SignDatabaseFunction = SignMap["recognizeSign"] | SignMap["addSignToDatabase"]

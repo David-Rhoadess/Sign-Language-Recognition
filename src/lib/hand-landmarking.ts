@@ -1,5 +1,4 @@
 import {DrawingUtils, FilesetResolver, HandLandmarker, type NormalizedLandmark} from "@mediapipe/tasks-vision";
-import type {SignDatabaseFunction} from "./sign-map.ts";
 
 const vision = await FilesetResolver.forVisionTasks(
     "/wasm"
@@ -38,14 +37,14 @@ function appendSignFrame(sign: Sign, frame: Frame) {
     sign.frames.push(structuredClone(frame));
 }
 
-function flushSign(sign: Sign, signDbFn: SignDatabaseFunction) {
+function flushSign(sign: Sign, signDbFn: (sign: Sign) => void) {
     // pass it to our "classification" model
     // i.e. through web worker or just normally if it's not too slow
     signDbFn(sign);
     signs.push(sign);
 }
 
-export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasElement, signDbFn: SignDatabaseFunction, onSignFlushed?: (sign: Sign) => void) {
+export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasElement, signDbFn: (sign: Sign) => void) {
     console.debug("watching webcam");
     canvasEl.style.width = `${videoEl.videoWidth} px`;
     canvasEl.style.height = `${videoEl.videoHeight} px`;
@@ -91,7 +90,6 @@ export function watchWebcam(videoEl: HTMLVideoElement, canvasEl: HTMLCanvasEleme
                 //  ideally you should pass in the text element that holds the word's label
                 //  into watchWebcam and pass the ref through
                 flushSign(currSign, signDbFn);
-                onSignFlushed?.(signs[signs.length - 1]);
                 currSign = null;
                 console.log("flushed sign, signs:", structuredClone(signs))
             }

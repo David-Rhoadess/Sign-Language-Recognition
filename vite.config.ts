@@ -17,8 +17,8 @@ export default defineConfig({
           let body = '';
           req.on('data', chunk => { body += chunk; });
           req.on('end', () => {
-            const dbPath = path.resolve(__dirname, 'public/MappingDatabase.json');
-            fs.writeFileSync(dbPath, body, 'utf8');
+            const dbPath = path.resolve(__dirname, 'src/MappingDatabase.json');
+            fs.writeFileSync(dbPath, JSON.stringify(JSON.parse(body), null, 2), 'utf8');
             res.statusCode = 200;
             res.end('ok');
           });
